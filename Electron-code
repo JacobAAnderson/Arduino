@@ -1,0 +1,84 @@
+/*  Fort Lewis College
+ *  Senior Sem - ASV Projcet
+ *  June 3rd, 2016
+ *  
+ *  
+ *  This code recives data as a String via I2C communication from an Arduino board
+ *  It then tansmits that data to the cloud vis particle.publish
+ 
+ */
+
+#define  CheckInRate 60     // Check In frequency in seconds
+
+bool DataRecived = false;   // State varible to indicate that data has been recived
+long int DataTime = 0;      // Variable to hold the time at which data is recived to ensure full data reception befor publishing data 
+
+String Data = "";           // Global String object to hold the recived data
+
+
+
+
+void setup() {
+
+  Wire.begin(8);                // join i2c bus with address #8
+  Wire.onReceive(receiveEvent); // register event
+  
+  
+}
+
+void loop() {
+    
+    long int time = millis()/1000;  // Time in seconds
+    
+    
+    // Check in to indicate the strength of the cell signal ==================================================
+    static bool CheckIn;    // State variable to indicate if a check in has been sent
+    if ( time % CheckInRate == 0 && CheckIn == true) {  String info = "";
+    
+                                                        CellularSignal sig = Cellular.RSSI();
+    
+                                                        info += "Cell rssi: ";
+                                                        info += String(sig.rssi);
+                                                        info += "\tCell qual: ";
+                                                        info += String(sig.qual);
+    
+                                                        Particle.publish("Boat1_CheckIn",info);
+                                
+                                                        CheckIn = false;
+                                                    }
+    else if ( time % CheckInRate == 0 && CheckIn == false);
+    else CheckIn = true;
+    
+    
+    // Send data upon full reception =============================================================================
+    if ( DataRecived == true && abs(time - DataTime) > 1) { Particle.publish("Boat1_Data",Data);
+                                DataRecived = false;
+                                Data ="";
+                                }
+
+}
+
+
+/*-------------------------------------------------------------------------------------------------------------------------------
+ =========================== Subrutiens =========================================================================================
+ ------------------------------------------------------------------------------------------------------------------------------*/
+
+
+// Recive Data from the Arduino board --------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------
+void receiveEvent(int howMany) {  // function that executes whenever data is received from master
+                                  // this function is registered as an event, see setup()
+  
+    DataTime = millis()/1000;
+    
+     // loop through all but the last two bytes.
+    while (Wire.available()) { char c =  Wire.read();  // receive byte as a character
+                               Data += c;
+                              }
+
+    DataRecived = true;
+
+}
+
+
+
