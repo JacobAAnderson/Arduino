@@ -1,4 +1,4 @@
-/*  Boat1 Overnight version 1
+/*  Boat1 Overnight version 2
  *  Jacob Anderson
  *  Fort Lewis College
  *  Sept 19th, 2016
@@ -137,8 +137,8 @@
 #define DECLINATION 12.0          // Local magnetic declination in degrees
 #define PARKING_RADIUS 15         // Parking waypoint radius
 #define SAMPLING_RATE 10          // Sensor Sampling frequency in seconds
-#define SUNRISE 7                 // Hour of Sun Rise --> 7am
-#define SUNSET 18                 // Hour of sun Set ---> 6pm
+#define SUNRISE 8                 // Hour of Sun Rise --> 7am
+#define SUNSET 17                 // Hour of sun Set ---> 6pm
 #define TIMEZONE 6                // Time Zone Difference from Grenage Mean Time
 #define WAYPOINT_RADIUS 5         // Waypoint Radius in Meters
 
@@ -146,10 +146,6 @@
 #define LON_TO_METER 88672.45     // Convert Degrees of Longitude to meters at 37.29 deg Lat
 #define LAT_TO_METER 110983.06    // Convert Degrees of Latitude to meters at 37.29 deg Lat
 
-/* Lat, Lon to meters in LA
-#define LON_TO_METER  92266.59   // Convert Degrees of Longitude to meters at 34.109 deg Lat
-#define LAT_TO_METER 110924.33   // Convert Degrees of Latitude to meters at 34.109 deg Lat
-*/
 
 // Functions------------------------------------------------------------------------------
 #define VOLTAGE(V) ( V * 5.0 / 1025.0 )  // Function that converts an analog reading to its corresponding voltage
@@ -208,10 +204,6 @@ float desLon[] = { -107.8468074,  -107.8451296,  -107.8461901,  -107.8459003 }; 
 float desLat[] = {   37.290866,   37.290768,   37.290287,   37.290328,   37.290968 };   // Latitudinal waypoints.  Last point is center of polygon for geo fence
 float desLon[] = { -107.846407, -107.845710, -107.845788, -107.846376, -107.845742};   // Longitudinal waypoints. Last point is center of polygon for Geo-Fencing
 
-/* Harvey Mud College
-float desLat[] = {   34.109171,   34.109090,   34.108993,   34.109150 };   // Latitudinal waypoints.  Last point is center of polygon for geo fence
-float desLon[] = { -117.712713, -117.712488, -117.712515, -117.712591 };   // Longitudinal waypoints. Last point is center of polygon for Geo-Fencing
-*/
 
 /* Geo-Fencing ===================================================================================================================================================
  * =============================================================================================================================================================== 
@@ -233,16 +225,12 @@ float polyY[] = {   37.2907932,    37.2911090,    37.2921141,    37.2924604,    
 float polyX[] = { -107.846868,  -107.845248,  -107.844876,  -107.845492,  -107.846354,  -107.846868 };  // Longitudinal coordinates of geo-fence
 float polyY[] = {   37.291170,    37.291698,    37.290559,    37.290129,    37.290026,    37.291170 };  // Latitudinal coordinates of geo-fence
 
-/* Harvey Mud College pond -------------------------------------------------------------------------------------------------------------------------------------
-float polyX[] = { -117.712842, -117.712765, -117.712507, -117.712383, -117.712521, -117.712708,  -117.712842 };   // Longitudinal coordinates of geo-fence
-float polyY[] = {   34.109080,   34.109249,   34.109189,   34.108992,   34.108930,   34.109068,    34.109080, };  // Latitudinal coordinates of geo-fence
-*/
 
 
 
-/*=====================================================================================================================================
- * ============================================ Set Up ===============================================================================
- * ==================================================================================================================================*/
+/*==============================================================================================================================================================================
+ * ============================================ Set Up =========================================================================================================================
+ * ===========================================================================================================================================================================*/
  
 void setup() { //Serial.begin(115200);
   
@@ -299,27 +287,18 @@ void setup() { //Serial.begin(115200);
   
 // Sensor Set up ==================================================================================================================================================
   // Temperature and Humidity Sensor -----------------------------------------------------
-   if (!htu.begin()) { File dataFile = SD.open(SD_FILE, FILE_WRITE);
-                       dataFile.println("Temperature and Humidity Sensor Failed to Initialize");
-                       dataFile.close(); 
-                       
+   if (!htu.begin()) { LogSD("Temperature and Humidity Sensor Failed to Initialize");                       
                        FAIL = HIGH;
                       }
   // IMU ------------------------------------------------------------------------------------------------------
   mag.enableAutoRange(true); /* Enable auto-gain */
   
-  if(!mag.begin()){   File dataFile = SD.open(SD_FILE, FILE_WRITE);
-                      dataFile.println("IMU Failed to Initialize");
-                      dataFile.close(); 
-                       
+  if(!mag.begin()){   LogSD("IMU Failed to Initialize");
                       FAIL = HIGH;
                     }
 
   
-  if(!accel.begin()) {  File dataFile = SD.open(SD_FILE, FILE_WRITE);
-                        dataFile.println("IMU Failed to Initialize");
-                        dataFile.close(); 
-                        
+  if(!accel.begin()) {  LogSD("IMU Failed to Initialize");
                         FAIL = HIGH;
                       }
 
@@ -328,18 +307,12 @@ void setup() { //Serial.begin(115200);
   
   // GPS Set up =======================================================================================================================
   // Check that the X and Y arrays of the Geo-Fence are the same size --------------------------------------------
-  if (sizeof(polyX) != sizeof(polyY)) { File dataFile = SD.open(SD_FILE, FILE_WRITE);
-                                        dataFile.println("Geo-Fence array sizes do not match");
-                                        dataFile.close(); 
-                       
+  if (sizeof(polyX) != sizeof(polyY)) { LogSD("Geo-Fence array sizes do not match");
                                         FAIL = HIGH;
                                         }
     
   // Check that the X and Y arrays of the Geo-Fence are the same size --------------------------------------------
-  if (sizeof(desLat) != sizeof(desLon)) { File dataFile = SD.open(SD_FILE, FILE_WRITE);
-                                          dataFile.println("GPS array sizes do not match");
-                                          dataFile.close(); 
-                                          
+  if (sizeof(desLat) != sizeof(desLon)) { LogSD("GPS array sizes do not match");
                                           FAIL = HIGH;
                                          }                                      
 
@@ -375,10 +348,7 @@ void setup() { //Serial.begin(115200);
 
 
   // Check Battery Voltage to see that Voltage is sufficient for operation
-  if( (motor_PORT.voltage() <= 10.5) || (motor_STAR.voltage() <= 10.5) ) { File dataFile = SD.open(SD_FILE, FILE_WRITE);
-                                                                           dataFile.println("Low Battery Voltage at start up");
-                                                                           dataFile.close(); 
-                                                                           
+  if( (motor_PORT.voltage() <= 10.5) || (motor_STAR.voltage() <= 10.5) ) { LogSD("Low Battery Voltage at start up");
                                                                            FAIL = HIGH;
                                                                            }
 
@@ -399,14 +369,8 @@ void setup() { //Serial.begin(115200);
 
   TimeKeeping();
   
-  //Set up a header ----------------------------------------------------------------------------------------------------------
-  String dataString = "Start Up: ";
-  dataString += Time;
+  LogSD("Start Up"); // Log Start up on SD card
   
-  File dataFile = SD.open(SD_FILE, FILE_WRITE);
-  dataFile.println(dataString);
-  dataFile.close();
-
   delay(10); // Delay for stability
 
 // Set up Watch dog timer ========================================================================================================
@@ -435,9 +399,9 @@ SIGNAL(TIMER0_COMPA_vect) { char c = GPS.read();} // Interrupt is called once a 
 /************************************************************************************************************************************/
 
 
-/*=====================================================================================================================================
- *============================================= Mian Loop ============================================================================= 
- *===================================================================================================================================*/
+/*===============================================================================================================================================================================
+ *============================================= Mian Loop ======================================================================================================================= 
+ *=============================================================================================================================================================================*/
 
 void loop() {
 
@@ -453,14 +417,9 @@ void loop() {
                                       if (!Thrusters) ThrustersOn();  // Turn Thrusters on if they are off
                                       GPSindex();                     // Check for waypoint radius achievment
                                       Drive();
-                                      
-                                      if (stationkeeping == true) { String data = Time;         // Log what time StationKeeping ended
-                                                                    data += "Waypoint nave";
 
-                                                                    File dataFile = SD.open(SD_FILE, FILE_WRITE);
-                                                                    dataFile.println(data);
-                                                                    dataFile.close();
-                                                                    }
+
+                                      if (stationkeeping == true) LogSD("Waypoint nave");
                                       stationkeeping = false;
                                     }
   else {  // Otherwise do station keeping
@@ -475,9 +434,8 @@ void loop() {
           else if ( !Return && Thrusters ) ThrustersOff();
           else;
 
-          if (stationkeeping == false) LogSD("Waypoint nave");
 
-                                       
+          if (stationkeeping == false) LogSD("Station Keeping");
           stationkeeping = true;
           }
 
@@ -508,11 +466,11 @@ void loop() {
 }
 
 
-/*==============================================================================================================================================================================
-**                                                                                                                                                                            **
+/*=============================================================================================================================================================================**
+**                                                                                                                                                                             **
 **                                                                 Subroutines                                                                                                 **
-**                                                                                                                                                                            **
-*=============================================================================================================================================================================*/
+**                                                                                                                                                                             **
+**=============================================================================================================================================================================*/
 
 
 void BatteryCheck(void) { // Check the battery voltage to see if it is at an acceptable level ---> Called by UpdataSensors()
@@ -522,18 +480,16 @@ void BatteryCheck(void) { // Check the battery voltage to see if it is at an acc
   motor_PORT.update();
   motor_STAR.update();
 
-  if((motor_PORT.voltage() == 0) || (motor_STAR.voltage() == 0 )) return;                                              // Thruster drop out ---> Exit function  
-  else if((motor_PORT.voltage() < 11.5) || (motor_STAR.voltage() < 11.5)) {  String error = Time;                      // Batteries are past the safe discharge level --> Turn boat off
-                                                                             error += "Battery voltage too low!!";                                                                             error += "\t";
+  if((motor_PORT.voltage() == 0) || (motor_STAR.voltage() == 0 )) return;                                                 // Thruster drop out ---> Exit function  
+  else if((motor_PORT.voltage() < 11.5) || (motor_STAR.voltage() < 11.5)) {  String error = "Battery voltage too low!!";  // Batteries are past the safe discharge level --> Turn boat off
+                                                                             error += "\t";
                                                                              error += "Star-Bat: ";
                                                                              error += String(motor_STAR.voltage());
                                                                              error += "\t";
                                                                              error += "Port-Bat: ";
                                                                              error += String(motor_PORT.voltage());
 
-                                                                             File dataFile = SD.open(SD_FILE, FILE_WRITE);
-                                                                             dataFile.println(error);
-                                                                             dataFile.close();
+                                                                             LogSD(error);
 
                                                                              digitalWrite( POWER_PIN, HIGH );
                                                                       }
@@ -546,15 +502,8 @@ void BatteryCheck(void) { // Check the battery voltage to see if it is at an acc
 void Drive(void) { // Vehicle control and thruster commands  ---> Gets called when the boat is driving during the day time or at night when the boat drifts out of the geo-fence
   
   static int PortSignal;     // Port Thruster Signals
-  static int portThrust;
   static int StarSignal;     // Starbord Thruster Signals
-  static int starThrust;
   
-  static float t_now;  // Current time is seconds
-  static float t_last; // Previous time in seconds
-
-  t_now = millis()/1000.0;
-  if (( t_last - t_now ) > 4,000,000) t_last = 0; // Set previous time to 0 if millis() overflows
 
 // Update navigation at 4Hz =================================================================================================================================    
   static bool upDateNave;
@@ -606,59 +555,54 @@ void Drive(void) { // Vehicle control and thruster commands  ---> Gets called wh
              StarSignal = 0;
             }
 
-      // Project thruster commands onto the calibrated range of values for each thruster
-      if ( PortSignal >= 0 ) PortSignal *= ( portMax / 100.0 );
-      else                   PortSignal *= ( portMin / 100.0 );
 
-      if ( StarSignal >= 0 ) StarSignal *= ( starMax / 100.0 );
-      else                   StarSignal *= ( starMin / 100.0 );
 
     }
   else if ((millis()/10) % 100 == 0 && upDateNave == false);
   else upDateNave = true;
 
-  // Ramp the truster inputs-------------------------------------------------
-  portThrust = Vel_Ramp( portThrust, PortSignal, t_now, t_last );
-  starThrust = Vel_Ramp( starThrust, StarSignal, t_now, t_last ); 
-
-  // Constrain the thrusters signal rang to the band of accepted values ------------
-  constrain( portThrust, MIN_THRUSTER_INPUT, MAX_THRUSTER_INPUT );
-  constrain( starThrust, MIN_THRUSTER_INPUT, MAX_THRUSTER_INPUT );
-
-  // Send Signal to the thrusters -----------------------------------------
-  motor_PORT.set( portThrust );
-  motor_STAR.set( starThrust );
-
-  t_last = t_now; // Update previous time
-  
+  ThrusterSet( PortSignal, StarSignal );
 }
 
 void ElectronOff(void) { // Turn the Particle electron Off ---> Called in main loop
 
   digitalWrite( ELECTRON_POWER_PIN, LOW);
   Cell = false;
-/*
-  String data = Time;
-  data += "   Electron Off";
+  
+  // LogSD("Electron On");
 
-  File dataFile = SD.open(SD_FILE, FILE_WRITE);
-  dataFile.println(data);
-  dataFile.close();
-  */
 }
 
 void ElectronOn(void) { // Turn the Particle Electron On  ---> Called in main loop
 
   digitalWrite( ELECTRON_POWER_PIN, HIGH);
   Cell = true;
-/*
-  String data = Time;
-  data += "   Electron On";
 
-  File dataFile = SD.open(SD_FILE, FILE_WRITE);
-  dataFile.println(data);
-  dataFile.close();
-  */
+  // LogSD("Electron Off");
+}
+
+void ElectronTransmit(String dataString){// Transmit data to the electron ---> Called by UpdateSensors()
+
+  // Convert the data String into a character array for I2C transmission
+  char transmit[ (dataString.length()+1) ];
+  dataString.toCharArray(transmit, (dataString.length()+1) );
+
+  wdt_reset();  // Reset Watch dog timer in case I2C takes too long
+
+  // Transmit the character array via I2C
+  byte i = 0;
+  Wire.beginTransmission(ELECTRON_ADDRESS);
+  while ( i <= dataString.length() ) {  if (i % 30 == 0) {  Wire.endTransmission();     // I2C buffer can hold a little over 30 characters. This ends and restarts the I2C every 30 characters as to not exceed the buffer
+                                                            delay(10);
+                                                            Wire.beginTransmission(ELECTRON_ADDRESS);
+                                                            }
+                                                    
+                                       Wire.write(transmit[i]);
+                                       i++;
+                                     }
+                                                          
+  Wire.endTransmission();
+  
 }
 
 void GeoFence(void){ // Manage waypoint index  ---> Called by Drive()
@@ -795,6 +739,7 @@ int Hour(void) { // Convert GPS hour into local time and manage DayTime state Va
 void LogSD( String data ) { // Log data to SD card ---> Called by many functions
 
   String info = Time;
+  info += "\t";
   info += data;
 
   File dataFile = SD.open(SD_FILE, FILE_WRITE);
@@ -807,21 +752,8 @@ void MonitorGPS(void) { // Monitor GPS for drop-outs --> Called in main loop
   
   static bool GPSFIX;
 
-  if (GPSFIX && !GPS.fixquality) { String data = Time;
-                                   data += "   GPS fix lost";
-
-                                   File dataFile = SD.open(SD_FILE, FILE_WRITE);
-                                   dataFile.println(data);
-                                   dataFile.close();
-                                  }
-                            
-   else if (!GPSFIX && GPS.fixquality > 0) { String data = Time;
-                                             data += "   GPS fix acquired";
-
-                                             File dataFile = SD.open(SD_FILE, FILE_WRITE);
-                                             dataFile.println(data);
-                                             dataFile.close();
-                                            }
+  if (GPSFIX && !GPS.fixquality) LogSD("GPS fix Lost");
+  else if (!GPSFIX && GPS.fixquality > 0) LogSD("GPS fix Acquired");
   else;
 
   if(GPS.fixquality == 0) GPSFIX = false;
@@ -864,13 +796,8 @@ void Stop(void) { // Stops the Vehicle ---> Gets Called by ThrustersOff()
                                 signal2 = 0;
                                 }                    
 
-                         signal1 *= ( portMin / 100.0 );
-                         signal2 *= ( starMin / 100.0 );
-
-                         // Send Signal to the thrusters -----------------------------------------
-                         motor_PORT.set( signal1 );
-                         motor_STAR.set( signal2 );
-
+                         ThrusterSet( signal1, signal2 );
+                         
                          i++;
                          }
 }
@@ -886,7 +813,7 @@ float Thermistor(int Raw){ //This function calculates temperature from ADC count
   return Temp;                                      // Return the Temperature
 }
 
-void ThrusterCalibrate(void) { // Calibrates the thrusters at startup --> Called by setup()
+void ThrusterCalibrate(void) { // Calibrates the thrusters at startup ---> Called by setup()
 
 /*  Calibrates thrusters by finding the rang of RPM for both thrusters and confining each thrusters input range to mach each other
  * 
@@ -1029,7 +956,7 @@ void ThrusterCalibrate(void) { // Calibrates the thrusters at startup --> Called
   starMin = abs( starSlope * minRPM + starInt );
 
 
-  String data = "\n------Calibration Values--------- \nPort Max: ";
+  String data = "------Calibration Values--------- \nPort Max: ";
   data += String(portMax);
   data += "\tPort Min: ";
   data += String(portMin);
@@ -1038,9 +965,7 @@ void ThrusterCalibrate(void) { // Calibrates the thrusters at startup --> Called
   data += "\tStar Min: ";
   data += String(starMin);
 
-  File dataFile = SD.open(SD_FILE, FILE_WRITE);
-  dataFile.println(data);
-  dataFile.close();
+  LogSD(data);
 
 /*Debugging Statements -----------------------------------------------------------------------------
   Serial.print("\nSignal Ave: "), Serial.print(signalAVE);
@@ -1150,14 +1075,8 @@ void ThrustersOff(void) { // Turn off Thruster SSRs and Manage Thruster State va
   digitalWrite( THRUSTER_POWER_PIN, LOW);
 
   Thrusters = false; // Manage state variable
-/*
-  String data = Time;
-  data += "   Thrusters Off";
 
-  File dataFile = SD.open(SD_FILE, FILE_WRITE);
-  dataFile.println(data);
-  dataFile.close();
- */ 
+  LogSD("Thrusters Off");  
   }
 
 void ThrustersOn(void) {  // Turn on Thruster SSRs and Manage Thruster State variable  ---> Called in main loop
@@ -1188,15 +1107,42 @@ void ThrustersOn(void) {  // Turn on Thruster SSRs and Manage Thruster State var
 
                                     delay(100);
                                     }
-/*
-  String data = Time;
-  data += "   Thrusters On";
-
-  File dataFile = SD.open(SD_FILE, FILE_WRITE);
-  dataFile.println(data);
-  dataFile.close();
-*/
+  LogSD("Thrusters On");
   }
+
+void ThrusterSet( int PortSignal, int StarSignal ) {
+  
+  static int portThrust;
+  static int starThrust;
+
+  static float t_now;  // Current time is seconds
+  static float t_last; // Previous time in seconds
+
+  t_now = millis()/1000.0;
+  if (( t_last - t_now ) > 4,000,000) t_last = 0; // Set previous time to 0 if millis() overflows
+
+  // Project thruster commands onto the calibrated range of values for each thruster
+  if ( PortSignal >= 0 ) PortSignal *= ( portMax / 100.0 );
+  else                   PortSignal *= ( portMin / 100.0 );
+
+  if ( StarSignal >= 0 ) StarSignal *= ( starMax / 100.0 );
+  else                   StarSignal *= ( starMin / 100.0 );
+
+  // Ramp the truster inputs-------------------------------------------------
+  portThrust = Vel_Ramp( portThrust, PortSignal, t_now, t_last );
+  starThrust = Vel_Ramp( starThrust, StarSignal, t_now, t_last ); 
+
+  // Constrain the thrusters signal rang to the band of accepted values ------------
+  constrain( portThrust, MIN_THRUSTER_INPUT, MAX_THRUSTER_INPUT );
+  constrain( starThrust, MIN_THRUSTER_INPUT, MAX_THRUSTER_INPUT );
+
+  // Send Signal to the thrusters -----------------------------------------
+  motor_PORT.set( portThrust );
+  motor_STAR.set( starThrust );
+
+  t_last = t_now; // Update previous time
+  
+}
 
 void TimeKeeping(void) { // Time keeping, updates 'time' and 'Time' --> Called in main loop, UpdateSensors() and error messages
                          
@@ -1221,16 +1167,12 @@ void UpdateSensors(void) { // Reads the sensors, takes an average of 10 readings
 
   // Internal Measurements ---------------------------------------------------------------------------- 
 
-  if ( htu.readTemperature() > 50 ) { File dataFile = SD.open(SD_FILE, FILE_WRITE);
-                                      dataFile.println("Temperature too high");
-                                      dataFile.close();
+  if ( htu.readTemperature() > 50 ) { LogSD("Temperature too high");
 
                                       digitalWrite(POWER_PIN, HIGH);
                                     }
                                           
-  if ( htu.readHumidity() > 75 ) { File dataFile = SD.open(SD_FILE, FILE_WRITE);
-                                   dataFile.println("Humidity too high");
-                                   dataFile.close();
+  if ( htu.readHumidity() > 75 ) { LogSD("Humidity too high");
 
                                    digitalWrite(POWER_PIN, HIGH);
                                   }
@@ -1339,31 +1281,7 @@ void UpdateSensors(void) { // Reads the sensors, takes an average of 10 readings
   dataString += ", ";
   dataString += String(pH);
 
-  delay(10); // Delay for stability
-
-
-// Transmit data to the electron ---------------------------------------------------------------------------
-
-  // Convert the data String into a character array for I2C transmission
-  char transmit[ (dataString.length()+1) ];
-  dataString.toCharArray(transmit, (dataString.length()+1) );
-
-  wdt_reset();  // Reset Watch dog timer in case I2C takes too long
-
-  // Transmit the character array via I2C
-  byte i = 0;
-  Wire.beginTransmission(ELECTRON_ADDRESS);
-  while ( i <= dataString.length() ) {  if (i % 30 == 0) {  Wire.endTransmission();     // I2C buffer can hold a little over 30 characters. This ends and restarts the I2C every 30 characters as to not exceed the buffer
-                                                            delay(10);
-                                                            Wire.beginTransmission(ELECTRON_ADDRESS);
-                                                            }
-                                                    
-                                       Wire.write(transmit[i]);
-                                       i++;
-                                     }
-                                                          
-  Wire.endTransmission();
-  
+  ElectronTransmit(dataString);
 }
 
 int Vel_Ramp( int velocity, int target, float t_now,  float t_last ) { // Velocity Ramp function --> Called in Drive()
@@ -1393,13 +1311,4 @@ int Vel_Ramp( int velocity, int target, float t_now,  float t_last ) { // Veloci
 
 // INTERUPTS ********************************************************************************************************************************
 
-ISR(WDT_vect) { // Watchdog timer interrupt.  
-
-  // Serial.println("Woof Woof!!");
-  
-  File dataFile = SD.open(SD_FILE, FILE_WRITE);
-  dataFile.println("\n\nWoof Woof!!");
-  dataFile.close();
-  
-}
-
+ISR(WDT_vect) { LogSD("\n\nWoof Woof!!"); }  // Watchdog timer interrupt, log Watchdog timer reset to the SD card.
