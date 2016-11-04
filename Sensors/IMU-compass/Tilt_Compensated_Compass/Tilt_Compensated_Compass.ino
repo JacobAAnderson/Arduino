@@ -57,12 +57,11 @@ void setup(void) {
 
 void loop(void) { 
   
-  float  Heading = GetHeading();
-  Serial.print("Heading:\t"), Serial.print(Heading), Serial.println(" [deg]\n\n");
+  Serial.print("Heading:\t"), Serial.print(Orientation.heading), Serial.println(" [deg]\n\n");
   delay(3000);
   }
 
-float GetHeading() {
+ { struct IMU Orientation { float heading, pitch, role; };
   
   // Get sensor data and normalize values --------------------------------------------------------------------------------
   sensors_event_t event; 
@@ -159,6 +158,7 @@ float GetHeading() {
   heading = heading + DECLINATION; 
   if ( heading > 360 ) heading = heading - 360;
 
+  Orientation.heading = heading
 
   /* Debugging Statments
   Serial.print("Gx: "); Serial.print(Gx,4); Serial.print("  ");
@@ -185,7 +185,7 @@ float GetHeading() {
   Serial.print("Y: "); Serial.print(Y,4); Serial.print("\n\n");
    */
  
-  return heading;
+  return Orientation;
 }
 
 
