@@ -1,12 +1,15 @@
 /*  Jacob Anderson 
- *  October 14th, 2015
+ *  November 9th, 2015
  *  
  *  This code drives the Space Grant 0 robot
+ *  
  *  This version has: Drives two brushed DC motoers with an H-drive shield
  *                    IR sensors perform obstacle avoidance
  *                    Intrupt on pin 2 for bumpers - Functions Good
  *                    IR caliberation rutien at start up
  *           
+ *  Devlopment on this version: Compass Navigation         
+ *  
  *  Future development: IMU
  *  
  *  ----------------------------------------------------------------------------------------------------------------
@@ -87,11 +90,11 @@ void setup() { // Serial.begin(9600);
  rIRhigh = IRcal[1] + rightIRrange/2;
  lIRhigh = IRcal[3] + leftIRrange/2;
 
- rIRmid  = IRcal[1] + rightIRrange/4;
- lIRmid  = IRcal[3] + leftIRrange/4;
+ rIRmid  = IRcal[1] + rightIRrange/5;
+ lIRmid  = IRcal[3] + leftIRrange/5;
 
- rIRlow  = IRcal[1] + rightIRrange/6;
- lIRlow  = IRcal[3] + leftIRrange/6;
+ rIRlow  = IRcal[1] + rightIRrange/7;
+ lIRlow  = IRcal[3] + leftIRrange/7;
 
   LEDstate(LOW, LOW, LOW);      // Tun LEDs on for half a second to indiacte that startup is complete
   LEDstate(HIGH, HIGH, HIGH);
