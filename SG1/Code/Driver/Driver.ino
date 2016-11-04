@@ -1,37 +1,39 @@
-/* This code is a stepping stone to progrming a robot that can follow the signal from a radio beacon
-   This code enablea a four wheeled vehical with continuous motor servos and a magnetic compass to drive
-   in the direction of a predefined magnetic bearing.
-   Created March 27th, 2015
-   Jacob Anderson
-   For: Space Grant Robot 1 "SG1"
-*/
+// Driving Code for SG1
 
 // Libraries
 #include <Servo.h>;    // Servo library
 #include <Wire.h>      // Reference the I2C Library
 #include <HMC5883L.h>  // Reference the HMC5883L Compass Library
 
-// Defined values
-#define Bearing 270 // Change this number to go different directions
+// Defined values =======================================
+// #define Bearing 270  // Defined bearing for the robot to follow. Not used if beacon is in play
 
-// Servos
+// Name servos: =========================================
 Servo A;     // Wheel A  Back left wheel
 Servo B;     // Wheel B  Back right wheel
 Servo C;     // Wheel C  Front left wheel
 Servo D;     // Wheel D  Front right whell
 Servo Lidar; // Servo that positions LIDAR
 
-// Define LEDs
+// Define LEDs ===========================================
 int LEDg = 7;    // Green  LED attach to pin 7
 int LEDy = 8;    // Yellow LED attache to pin 8
 int LEDr = 9;    // Red LED attach to pin 9
 
-// Variables
+// Variables ==============================================
+  // Compass
 HMC5883L compass;   // Store our compass as a variable.
 int error = 0;      // Record any errors that may occur in the compass.
 float HEADING;      // Heading in degrsse from compass
-float DeltaC;
+float DeltaC;      // Diferance between compass heading and the designated bearing
 
+  // Beacon
+int vectorSerial;      // Vector from Beacon
+int Bearing;           // Bearing for the robot to follow
+int InitialBeacon = 0; // Bearing reading at the begining of the course
+int DeltaB;            // Beacon differential
+ 
+  // Driving
 int LSM = 77;   // Median left  side wheel speed. Left  wheels:  Forward < 90
 int RSM = 103;  // Median right side wheel speed. Right wheels:  Forward > 90
 int leftWheels;    // Varialbe used to control the right wheels' speed
@@ -39,9 +41,10 @@ int rightWheels;   // Variable used to control the left wheels' speed
 int Radius;        // Turning radious: + Radius will turn left, - Radius will turn right
 
 // == set up routien================================================================================================================================
+// =================================================================================================================================================
 void setup(){  Serial.begin(9600);
 
-  // == Servos ==============================================  
+ // -- Servos --------------------------------------------------------  
   A. attach(2);      // Attach Back  left  wheel to pin 2
   B. attach(3);      // Attach Back  right wheel to pin 3
   C. attach(4);      // Attach Front left  wheel to pin 4
@@ -57,12 +60,12 @@ void setup(){  Serial.begin(9600);
   D. write(90);
   Lidar.write(85); // Center Lidar Servo, Lidar centers with an input of 85, 90 is a little off center.
 
-  // == LEDs, Set up LED pins as outputs ====================
+ // -- LEDs, Set up LED pins as outputs --------------------------------
   pinMode(LEDg, OUTPUT); 
   pinMode(LEDy, OUTPUT); 
   pinMode(LEDr, OUTPUT); 
     
-  // turn LEDs on to indicat that they are working
+  // turn LEDs on to indicat that they are working 
   digitalWrite(LEDg, HIGH);
   digitalWrite(LEDy, HIGH);
   digitalWrite(LEDr, HIGH);
@@ -75,7 +78,7 @@ void setup(){  Serial.begin(9600);
   
   delay(1000);
   
-   // == Compass =============================================
+   // -- Compass --------------------------------------------------------------
   Serial.println("Starting the I2C interface.");
   Wire.begin(); // Start the I2C interface.
 
@@ -91,40 +94,57 @@ void setup(){  Serial.begin(9600);
   error = compass.SetMeasurementMode(Measurement_Continuous); // Set the measurement mode to Continuous
   if(error != 0) // If there is an error, print it out.
     Serial.println(compass.GetErrorText(error));
+   
+// == Retrive Initial Bearing =========================================================================
   
+  for (int index = 0; index < 10; index++) {
+    GetBeacon();
+    InitialBeacon = InitialBeacon + Bearing;}
+    
+    InitialBeacon = InitialBeacon / 10;
+
 Serial.println("Set up done");
-// == Set up initial values for variables ===================
- }
+
+}
 
 // == Main loop ====================================================================================================================================
-
+// =================================================================================================================================================
 void loop() {
-    
-  Compass();
-  Serial.print("Heading: \t");
-  Serial.print(HEADING);
-  Serial.print("\t DeltaC: \t");
-  Serial.print(DeltaC);
   
-  FindRadius();
-  Serial.print("\t Radius");
+  GetBeacon(); // Get bearing from beacon forthe robot to follow
+  
+  Compass();  // Get compass heading (direction the robot is facing)
+  Serial.print("\t Heading: ");
+  Serial.print(HEADING);
+ 
+ // BeaconDifferencial();
+ 
+  FindRadius(); // Use the bearing and compass heading to deterimin what direction the robot should move
+  Serial.print("\t DeltaC: ");
+  Serial.print(DeltaC);
+  Serial.print("\t Radius: ");
   Serial.println(Radius);
-  DriveForward();
+  
+  DriveForward();  // Go
+  Serial.println("\t Driving ");
   delay(100);
   
+  
+  
+  Serial.println("\t Main loop done, Repeat.");
 }
 // =========== Subrutiens ========================================================================================================
 // ===============================================================================================================================
-// ===== Driving routien ================================================
+
+// ---- Driving routien ------------------------------------------------------
 void DriveForward(){
   
-  Serial.println("Driving");
   // Assign wheel speed values
   // Turning radious: + Radius will turn left, - Radius will turn right
   // LSM = 77   RSM = 103
   
-    leftWheels  = (LSM + Radius);
-    rightWheels = (RSM + Radius);
+    leftWheels  = (LSM + Radius); // Equation for the left  wheel speed
+    rightWheels = (RSM + Radius); // Equation for the right wheel speed
   
   // Drive
   A. write(LSM);   // Wheel A  Back  left  wheel:  Forward < 90
@@ -134,8 +154,9 @@ void DriveForward(){
   
 }
 
-// ==== Compass =============================================================
+// ==== Navigation routiens ===================================================================================
 
+// ---- Compass ----------------------------------------------------------------------------
 void Compass(){
   // Retrive the raw values from the compass (not scaled).
   MagnetometerRaw raw = compass.ReadRawAxis();  //why no orange?***********
@@ -150,9 +171,11 @@ void Compass(){
   
   // Once you have your heading, you must then add your 'Declination Angle', which is the 'Error' of the magnetic field in your location.
   // Find yours here: http://www.magnetic-declination.com/
-  // Mine is: 2� 37' W, which is 2.617 Degrees, or (which we need) 0.0456752665 radians, I will use 0.0457
-  // If you cannot find your Declination, comment out these two lines, your compass will be slightly off.
-  float declinationAngle = 0.0108;
+  
+// * Declination angle for Durango, CO.: 9.5 deg = 0.1658 rad
+// * Declination angle for The Great Sandunes National Park: 8.5 deg = 0.14853 rad
+  
+  float declinationAngle = 0.1658; // * Declination Angle *
   heading += declinationAngle;
   
   // Correct for when signs are reversed.
@@ -167,54 +190,44 @@ void Compass(){
   float headingDegrees = heading * 180/M_PI; 
   HEADING = headingDegrees;
 
-  // Output the data via the serial port.
-  // Output(raw, scaled, heading, headingDegrees);
-
-  // Normally we would delay the application by 66ms to allow the loop
-  // to run at 15Hz (default bandwidth for the HMC5883L).
-  // However since we have a long serial out (104ms at 9600) we will let
-  // it run at its natural speed.
-   delay(66);
+   delay(66); // Delay to prevent overloading the compass
 }
 
-void Output(MagnetometerRaw raw, MagnetometerScaled scaled, float heading, float headingDegrees)
-{
-   Serial.print("Raw:\t");
-   Serial.print(raw.XAxis);
-   Serial.print("   ");   
-   Serial.print(raw.YAxis);
-   Serial.print("   ");   
-   Serial.print(raw.ZAxis);
-   Serial.print("   \tScaled:\t");
+// ---- Beacon routien ------------------------------------------------------------------------
+void GetBeacon(){
+  // Start a read from the Serial Interface
+  // look for the next valid integer in the incoming serial stream:
+  if (Serial.available() > 0) {vectorSerial = Serial.parseInt(); }
+  else                        {vectorSerial = 202;} //Setting vectorSerial to a "stale" value to help the robot know the vector has not been updated.  
    
-   Serial.print(scaled.XAxis);
-   Serial.print("   ");   
-   Serial.print(scaled.YAxis);
-   Serial.print("   ");   
-   Serial.print(scaled.ZAxis);
+  if(vectorSerial == 90 || vectorSerial > 180) {Bearing = Bearing; }
+  else if (vectorSerial < 90 )                 {Bearing = vectorSerial*2 + 180;}
+  else                                         {Bearing = vectorSerial*2 - 180;}
+  
+  // Display bearing from radio beacon
+  Serial.print("From Beacon Receiver over Serial: "); 
+  Serial.print(vectorSerial);
+  Serial.print("\t Bearing: ");
+  Serial.println(Bearing);
+  delay(2000);
+}
+// ---- Beacon differnce corection -----------------------------------------------------------
+void BeaconDifferencial() { Serial.print("Calculateing Beacon differential");
 
-   Serial.print("   \tHeading:\t");
-   Serial.print(heading);
-   Serial.print(" Radians   \t");
-   Serial.print(headingDegrees);
-   Serial.println(" Degrees   \t");
-   delay(1000);
+  DeltaB = InitialBeacon - Bearing;
+  Bearing = Bearing + DeltaB;
 }
 
-// ==== Navigation routiens ===============================================================
+// ---- Detumine which way to go based on the compass and beacon data ------------------------
+void FindRadius(){ // Use Compass heading to calculate a turning radious
 
-void FindRadius() // Use Compass heading to calculate a turning radious
-{
-  // Turning radious: + Radius will turn left, - Radius will turn right
-    
+  // Turning radious: + Radius will turn left, - Radius will turn right  
   if      (Bearing < 180 && (Bearing+180)<HEADING )      {DeltaC = Bearing - HEADING;}
   else if (180 < Bearing && HEADING < (Bearing - 180))   {DeltaC = Bearing - HEADING;}
   else                                                   {DeltaC = HEADING - Bearing;} // Corects for sign when Compass heading is in second quadrent
   
-  
   Radius = map(DeltaC, -45, 45, -7, 7 );    // Map out turing radious.
   Radius = constrain(Radius, -7, 7);        // Constrain Turing radius to + or - 7 to prevent jack-knifing
-  
 }
   
   
