@@ -17,7 +17,7 @@
 #include <HMC5883L.h>  // Reference the HMC5883L Compass Library
 
 // Defined values
-#define Bearing 320                 // Direction of travel Change this number to go different directions
+#define Bearing (270)               // Direction of travel Change this number to go different directions
 #define LIDARLite_ADDRESS   0x62    // Default I2C Address of LIDAR-Lite.
 #define RegisterMeasure     0x00    // Register to write to initiate ranging.
 #define MeasureValue        0x04    // Value to initiate ranging.
@@ -75,7 +75,7 @@ int LIDARmin;           // Minimum value of the vector. Set very high initialy s
 int LeftIRave;    int LeftIRhigh;    int LeftIRlow;    int LeftIR_0;   // Average on flat ground 280
 int CenterIRave;  int CenterIRhigh;  int CenterIRlow;  int CenterIR_0; // Average on flat ground 316
 int RightIRave;   int RightIRhigh;   int RightIRlow;   int RightIR_0;  // Average on flat ground 278  
-int Count = 0;                           
+                           
 // -- Vector variables -------------------------------------------------------------------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------------------------------------------------------------------------------------
 const int LIDARvec = 13;  // Number of elements in LIDARdistances vector
@@ -178,18 +178,14 @@ void setup(){  Serial.begin(9600); Serial.print(""); // empty line
    RightIRvec[Zero]  = 0; }
    
 // -- Set up initial values for variables --------------------------------------------------------------------------   
- Serial.print("");
- Serial.print("Initial IR data:");
- while( Count < 20) {ReadIR(); Count++;}
-
     // IR Sensors
-  LeftIR_0 = LeftIRave;        Serial.print("LeftIR_0: "); Serial.print(LeftIR_0);      
-  CenterIR_0 = CenterIRave;    Serial.print("\tCenterIR_0: "); Serial.print(CenterIR_0);
-  RightIR_0 = RightIRave;      Serial.print("\tRightIR_0: "); Serial.println(RightIR_0);
+  LeftIR_0 = 280;      
+  CenterIR_0 = 316;
+  RightIR_0 = 278;
   
-  LeftIRhigh   = LeftIR_0   + 60;  LeftIRlow   = LeftIR_0   - 100;  Serial.print("LeftIRhig: ");   Serial.print(LeftIRhigh);    Serial.print("\tLeftIRlow: ");   Serial.println(LeftIRlow);       
-  CenterIRhigh = CenterIR_0 + 60;  CenterIRlow = CenterIR_0 - 100;  Serial.print("CenterIRhig: "); Serial.print(CenterIRhigh);  Serial.print("\tCenterIRlow: "); Serial.println(CenterIRlow);
-  RightIRhigh  = RightIR_0  + 60;  RightIRlow  = RightIR_0  - 100;  Serial.print("RightIRhig: ");  Serial.print(RightIRhigh);   Serial.print("\tRightIRlow: ");  Serial.println(RightIRlow);
+  LeftIRhigh   = LeftIR_0   - 50;  LeftIRlow   = LeftIR_0   + 50;  Serial.print("LeftIRhig: ");   Serial.print(LeftIRhigh);    Serial.print("\tLeftIRlow: ");   Serial.println(LeftIRlow);       
+  CenterIRhigh = CenterIR_0 - 50;  CenterIRlow = CenterIR_0 + 50;  Serial.print("CenterIRhig: "); Serial.print(CenterIRhigh);  Serial.print("\tCenterIRlow: "); Serial.println(CenterIRlow);
+  RightIRhigh  = RightIR_0  - 50;  RightIRlow  = RightIR_0  + 50;  Serial.print("RightIRhig: ");  Serial.print(RightIRhigh);   Serial.print("\tRightIRlow: ");  Serial.println(RightIRlow);
  
 Serial.println("Set up done");
 delay(10);
@@ -245,14 +241,14 @@ void loop() {
   
   */
 // --- 1: If LIDARmin is less than 50, drive backwards --------------------------------------------------------------------------------------------------------  
-  if      ( LIDARbinMin <60 ) {DriveBackwards();Radius = 0; } 
+  if      ( LIDARmin <50 ) {DriveBackwards();} 
 
 // --- 2: If IR sensors detects an obstacle, drive straight backwards then turn away from the object ------------------------------------------------------  
-  else if (LeftIRave > LeftIRhigh || LeftIRave < LeftIRlow)            {DriveBackwards(); Radius = -3;} 
+  else if (LeftIRave < LeftIRhigh || LeftIRave> LeftIRlow)            {DriveBackwards(); Radius = -3; delay(100);} 
   
-  else if (CenterIRave > CenterIRhigh || CenterIRave < CenterIRlow)   {DriveBackwards(); Radius =  0;}
+  else if (CenterIRave < CenterIRhigh || CenterIRave > CenterIRlow)   {DriveBackwards(); Radius =  0; delay(100);}
   
-  else if (RightIRave > RightIRhigh || RightIRave < RightIRlow)       {DriveBackwards(); Radius =  3;}
+  else if (RightIRave < RightIRhigh || RightIRave > RightIRlow)       {DriveBackwards(); Radius =  3; delay(100);}
   
 // --- 3: LIDAR detects object at midrange, drive around object ---------------------------------------------------------------------------------------------- 
               /*   if      (BEARING < 180 && (BEARING+180)<HEADING )      {DeltaC = BEARING - HEADING;}
@@ -261,13 +257,10 @@ void loop() {
               */
 
 
-else if (LIDARbinMin < 300) { OffSet = MinBinAngle/2 - MaxBinAngle/2 ;
-                              
+else if (LIDARbinMax < 300) { OffSet = MinBinAngle + MaxBinAngle ;
                               OffSet = constrain(OffSet, -45, 45); 
                               BEARING = Bearing + OffSet; 
                               DriveForward();
-                              
-                              if (BEARING > 360) { BEARING = BEARING - 360;}
                             }
   
 // --- 4: No obstacles detected, follow bearing --------------------------------------------------------------------------------------------------------------
