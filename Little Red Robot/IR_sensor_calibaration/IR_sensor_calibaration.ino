@@ -1,83 +1,78 @@
-// This script calibrates two IR senssors and maps the output values over a arange from 0 to 150 
-
-// Input pins
-int LeftIRpin = A0;    
-int RightIRpin = A1;
-
-// Output pins
-int GreenLed = 5;
-
-// variables:
-int RawIRleft = 0;    // the sensor values
-int RawIRright = 0;
-int IRleft = 0;       // Mapped IR values  
-int IRright =0;
-int LeftIRmin = 1023;        // Calibration values
-int LeftIRmax = 0;
-int RightIRmin = 1023;
-int RightIRmax = 0;
+/*  This Code is designed to read two IR sensors. 
+ *   It includeds a calibration rutien
+ *   The sensor reading are averaged over a range of 10 readings
+ */
 
 
-void setup() {Serial.begin(9600);
-   calibrateIR(); // Run the IR calibration subrutien
+int IRcal[] = {0, 0, 0, 0};
+
+void setup() { Serial.begin(9600);
+
+pinMode(A0, INPUT);
+pinMode(A1, INPUT);
+
+calibrateIR();
+Serial.print("IR calibration: ");
+for (int i=0; i<4; i++) { Serial.print(IRcal[i]), Serial.print(" , ");}
+
+Serial.println("\n----------------- Setup Done -----------------\n");
 }
 
 void loop() {
-  mapIR(); // Run the IR maping subrutien
   
-  delay(500);
+  Serial.println("");
+  Serial.println("Get IR Data --------------------------");
+  Serial.println("");
+  
+  Serial.println("Get Right IR");
+  int rightIR = GetIR(0);
+  Serial.print("Right IR: "), Serial.println(rightIR), Serial.println("");
+  
+  Serial.println("Get Left IR");
+  int leftIR = GetIR(2);
+  Serial.print("left IR: "), Serial.println(leftIR), Serial.print("");
+  delay(5000);
+  
 }
-//======================= Subrutiens ===================================
 
-void calibrateIR() { // IR calibration subrutien
-  while (millis() < 5000) {
-    digitalWrite(GreenLed, HIGH);
-    
-    RawIRleft  = analogRead(LeftIRpin);  // Read IR sensors
-    RawIRright = analogRead(RightIRpin);
+int GetIR(int pin){ int total = 0;
 
-    if (RawIRleft  > LeftIRmax)  {LeftIRmax  = RawIRleft;}   // record the maximum sensor value
-    if (RawIRright > RightIRmax) {RightIRmax = RawIRright;}
-    
-    if (RawIRleft  < LeftIRmin)  {LeftIRmin  = RawIRleft;}  // record the minimum sensor value
-    if (RawIRright < RightIRmin) {RightIRmin = RawIRright;}
+                    if      (pin == 0) {pin = A0;}
+                    else               {pin = A1;}
+
+                    for(int i=0; i<10; i++) { int plus = analogRead(pin);
+                                              total= total + plus;
+                                             }
+
+                    int average = total/10;
+                    return average;
+                   }
+
+void calibrateIR () { // Calibration rutien for the IR sensors
+  Serial.println("Calibrating IR sensors\n");
+  
+  int leftmax  = 0, leftmin  = 1000;
+  int rightmax = 0, rightmin = 1000;
+  
+  
+  while (millis() < 4000) {
+   int right = GetIR(0);
+   int left  = GetIR(2);
+  
+  if ( right > rightmax ) { rightmax = right; }
+  if ( right < rightmin ) { rightmin = right; }
+
+  if ( left > leftmax ) { leftmax = left;}
+  if ( left < leftmin ) { leftmin = left;}
+   
   }
-  digitalWrite(GreenLed, LOW);
-  Serial.println("  ");
-  Serial.print("Max left IR value: \t");    // Print results
-  Serial.print(LeftIRmax);
-  Serial.print("\t Min left IR value: \t");
-  Serial.print(LeftIRmin);
-  
-  Serial.print("\t Max right IR value: \t");
-  Serial.print(RightIRmax);
-  Serial.print("\t Min right IR value: \t");
-  Serial.println(RightIRmin);
+
+  IRcal[0] = rightmax;
+  IRcal[1] = rightmin;
+  IRcal[2] = leftmax;
+  IRcal[3] = leftmin;
 }
 
-void mapIR() {  // Subtutien that maps the IR value on a range from 0 to 150
-  // read the sensor:
-  
-  
-  RawIRleft  = analogRead(LeftIRpin);
-  RawIRright = analogRead(RightIRpin);
-  
-  // apply the calibration to the sensor reading
-  IRleft  = map(RawIRleft,  LeftIRmin,  LeftIRmax,  0, 150);
-  IRright = map(RawIRright, RightIRmin, RightIRmax, 0, 150);
 
-  // in case the sensor value is outside the range seen during calibration
-  IRleft  = constrain(IRleft,  0, 150);
-  IRright = constrain(IRright, 0, 150);
 
-  // fade the LED using the calibrated value:
-  
-  Serial.print("Raw left IR data: \t");
-  Serial.print(RawIRleft);
-  Serial.print(" \t Mapped left IR value: ");
-  Serial.print(IRleft);
-  Serial.print("\t Raw right IR data: \t");
-  Serial.print(RawIRright);
-  Serial.print(" \t Mapped right IR value: ");
-  Serial.println(IRright);
-}
+                   
