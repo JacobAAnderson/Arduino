@@ -4,10 +4,10 @@
  *  This code drives the Space Grant 0 robot
  *  This version has: Drives two brushed DC motoers with an H-drive shield
  *                    IR sensors perform obstacle avoidance
+ *                    Intrupt on pin 2 for bumpers - Functions Good
  *                    IR caliberation rutien at start up
  *           
- *  Future development: Intrupt on pin 2 for bumpers - Needs refinmnet
- *                      IMU
+ *  Future development: IMU
  *  
  *  ----------------------------------------------------------------------------------------------------------------
  *  Pins:   0 - Rx - Free                              A0 - Right IR sensor
@@ -44,11 +44,17 @@
  int rIRmid, lIRmid;
  int rIRlow, lIRlow;
 
- float Time = 0;
- float Time_0 = 0;
+ unsigned long Time = 0;
+ volatile unsigned long impactTime;
+ volatile int bumper;
+ 
+
+ boolean hit = false;
+ 
+ 
 
 
-void setup() {
+void setup() { // Serial.begin(9600);
 
   attachInterrupt(digitalPinToInterrupt(2), BUMP, LOW); // Bumper interupt
  
@@ -101,7 +107,28 @@ void loop() {
   int turn = 0;
   int sped = 0;
 
+  
+  static int rebound = 1000;
 
+  Time = millis();
+/*
+  Serial.print("time: "), Serial.print(Time);
+  Serial.print("\tImpact Time: "), Serial.println(impactTime);
+  Serial.print("Hit: "), Serial.print(hit);
+ */                      
+
+switch (hit) {
+  case true:
+  
+  if ( (Time - impactTime) <= rebound )  BackUp(bumper);
+  else { Pivot(bumper, 500);
+         hit = false;
+        }
+        
+  break;
+  
+  case false:
+  default:
   
   if (rightIR > rIRhigh && leftIR > lIRhigh ) { // Both IR sensors See somthing close --> Backup and Pivot
     
@@ -119,7 +146,7 @@ void loop() {
         BackUp( turn );
       }
   
-  Pivot( turn );
+  Pivot( turn, 900 );
  }
 
 else if ( rightIR > rIRhigh || leftIR > lIRhigh ) { // One IR sensor sees somthing closs --> Turn Sharp
@@ -157,6 +184,8 @@ else { // IR sesnsors dont see anything --> Drive straing, Go faster
   
  }
 
+// delay(700);
+}
 }
 
 
@@ -187,7 +216,8 @@ void BackUp( int turn ){ // Drive Backwards --> Yellow LED
    digitalWrite(dir_a, LOW); analogWrite(pwm_a, wheelA); // Right wheel
    digitalWrite(dir_b, LOW); analogWrite(pwm_b, wheelB); // Left Wheel
 
-  LEDstate(LOW, HIGH, LOW);
+  if (hit = true) LEDstate(HIGH, LOW, HIGH);
+  else LEDstate(LOW, HIGH, LOW);
  }
 
 void Stop() { // Stops the robot, 1s delay --> No LED
@@ -199,7 +229,7 @@ void Stop() { // Stops the robot, 1s delay --> No LED
   delay(1000);
 }
 
-void Pivot( int piv) { // Pivots the robot - 2s delay --> Green and Yellow LEDs
+void Pivot( int piv, int rot) { // Pivots the robot - 2s delay --> Green and Yellow LEDs
 
 LEDstate(HIGH, HIGH, LOW);
 
@@ -213,28 +243,28 @@ LEDstate(HIGH, HIGH, LOW);
    digitalWrite(dir_a, stateA ); analogWrite(pwm_a, wam); // Right wheel
    digitalWrite(dir_b, stateB ); analogWrite(pwm_b, wbm); // Left Wheel
 
-   delay(900);
+   delay(rot);
   
 }
 
 
 
 void BUMP() { // Interupt on Pin 2 for bumper inpacts, 10.5s delay --> Red LED
-//  detachInterrupt(digitalPinToInterrupt(2));
+  
 // pin 8 is left bumper, pin 9 is right bumper
 
   analogWrite(pwm_a, 0);   // Stop 
   analogWrite(pwm_b, 0);
- 
+
+  impactTime = Time;
+  hit = true;
+  
   LEDstate(LOW, LOW, HIGH);
   
-
-int turn = 0;
   
- if (digitalRead(8) == HIGH && digitalRead(9) == HIGH ) { turn = 0; } // Both bumpers
- else if ( digitalRead(8) == HIGH ) { turn =  20;}  // Left bumper
- else if ( digitalRead(9) == HIGH ) { turn = -20;}  // right Bumper
- else { turn = 0; } //  Bumper no longer depressed
+ if (digitalRead(8) == HIGH && digitalRead(9) == HIGH ) { bumper = 0; } // Both bumpers
+ else if ( digitalRead(8) == HIGH ) { bumper =  20;} // Left bumper
+ else { bumper = -20; } // Right bumper
 
  while ( digitalRead(8) == HIGH || digitalRead(9) == HIGH) { // while the bumper is depressed go back straight
 
@@ -243,27 +273,6 @@ int turn = 0;
         digitalWrite(dir_a, LOW); analogWrite(pwm_a, wam); // Right wheel
         digitalWrite(dir_b, LOW); analogWrite(pwm_b, wbm); // Left Wheel
        }
-
-  LEDstate(HIGH, LOW, HIGH);
-
-   digitalWrite(dir_a, LOW); analogWrite(pwm_a, (wam + turn)); // Right wheel
-   digitalWrite(dir_b, LOW); analogWrite(pwm_b, (wbm - turn)); // Left Wheel
-
- 
-
-  if (turn > 0 ) {// Pivot right
-    digitalWrite(dir_a, HIGH); analogWrite(pwm_a, wam ); // Right wheel
-    digitalWrite(dir_b, LOW); analogWrite(pwm_b, wbm ); // Left Wheel
-  }
-
-  else { // Pivot left
-    digitalWrite(dir_a, LOW); analogWrite(pwm_a, wam + turn); // Right wheel
-    digitalWrite(dir_b, HIGH); analogWrite(pwm_b, wbm - turn); // Left Wheel
-  }
- 
-
-
-// attachInterrupt(digitalPinToInterrupt(2), BUMP, LOW);
 }
 
 
