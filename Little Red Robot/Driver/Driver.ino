@@ -1,10 +1,10 @@
-// This code is to drive a robot with an H-drive, IR sensors, 2 bump sensors, and magnetic compass
+// This script combins IR sensors, bumper sensors and a magnetic compass to drive a robot.
 
-// Compass Code 
-  #include <Wire.h>     // Reference the HMC5883L Compass Library
-  #include <HMC5883L.h>
-  HMC5883L compass;     // Store our compass as a variable.
-  int error = 0;        // Record any errors that may occur in the compass.
+// Compass Code
+  #include <Wire.h> // Reference the I2C Library
+  #include <HMC5883L.h> // Reference the HMC5883L Compass Library
+  HMC5883L compass; // Store our compass as a variable.
+  int error = 0;  // Record any errors that may occur in the compass.
 
 // Inputs and outputs:
   // Wheels
@@ -27,20 +27,19 @@
 // Variables:
   float wheelA;  // Right wheel
   float wheelB;  // Left wheel
+  float dC;       // Varialbe for the diiferance between the bearing and compass heading
   
-  float Bearing = 90; // Bearing for the robot to follow
-  float headingDegrees;  // Compass heading in Degrees
-  float dC; // differance between the bearing and compass heading
-
-void setup(){
+  #define Bearing 90// Direction of travel //==//==//==//==//==//==//==//==//==//==//==//==//==//==// 
+   
+void setup()
+{ 
+  Serial.begin(9600); // Initialize the serial port.
   
-  Serial.begin(9600);  // Initialize the serial port.
-
-// Compass Code - Out setup routine, here we will configure the microcontroller and compass.
+  // Compass Code - Out setup routine, here we will configure the microcontroller and compass.
   Serial.println("Starting the I2C interface.");
   Wire.begin(); // Start the I2C interface.
   Serial.println("Constructing new HMC5883L");
-  compass = HMC5883L(); // Construct a new HMC5883 compass.    
+  compass = HMC5883L(); // Construct a new HMC5883 compass.  
   Serial.println("Setting scale to +/- 1.3 Ga");
   error = compass.SetScale(1.3); // Set the scale of the compass.
   if(error != 0) // If there is an error, print it out.
@@ -50,8 +49,8 @@ void setup(){
   if(error != 0) // If there is an error, print it out.
     Serial.println(compass.GetErrorText(error));
 
-// Set up for sensors, H-drive, and lights
- // Set control pins for the wheels
+// Pin inputs and outputs
+  // Set control pins for the wheels
   pinMode(pwm_a, OUTPUT);
   pinMode(pwm_b, OUTPUT);
   pinMode(dir_a, OUTPUT);
@@ -60,7 +59,6 @@ void setup(){
   // Set up pins for sensors
   pinMode(IRleft, INPUT);  //Reading from Port IR sensor
   pinMode(IRright, INPUT); // Read from starboard IR sensor
-  
   pinMode(leftBumper, INPUT); // Reading from bumper switches
   pinMode(rightBumper, INPUT);
   
@@ -69,52 +67,69 @@ void setup(){
   pinMode(ledY, OUTPUT);
   pinMode(ledR, OUTPUT);
   
-  // Set both moters to 0 - stop
-  analogWrite(pwm_a, 0);   
-  analogWrite(pwm_b, 0);
-
+  Stop(); // Stop the wheels
 }
 
-void loop (){
-  Compass();
-  DeltaCompass();
-  Drive();
-}
-  
-//=============================================== SUB-RUTIENS ====================================================
 // Our main program loop.
-void Compass()
-{ // Retrive the raw values from the compass (not scaled).
-  MagnetometerRaw raw = compass.ReadRawAxis();
-  // Retrived the scaled values from the compass (scaled to the configured scale).
-  MagnetometerScaled scaled = compass.ReadScaledAxis();
+void loop()
+{
+// Compass Code 
+  MagnetometerRaw raw = compass.ReadRawAxis(); // Retrive the raw values from the compass (not scaled).
+  MagnetometerScaled scaled = compass.ReadScaledAxis(); // Retrived the scaled values from the compass (scaled to the configured scale).
   
   // Values are accessed like so:
   int MilliGauss_OnThe_XAxis = scaled.XAxis;// (or YAxis, or ZAxis)
-
-  // Calculate heading when the magnetometer is level, then correct for signs of axis.
-  float heading = atan2(scaled.YAxis, scaled.XAxis);
-  float declinationAngle = 0.0457;
+  float heading = atan2(scaled.YAxis, scaled.XAxis); // Calculate heading when the magnetometer is level, then correct for signs of axis.
+  float declinationAngle = 0.0457; // 2.618 degrees East declination
   heading += declinationAngle;
-  if(heading < 0) // Correct for when signs are reversed.
+  
+  if(heading < 0)  // Correct for when signs are reversed.
     heading += 2*PI;
-  if(heading > 2*PI)  // Check for wrap due to addition of declination.
+    
+  if(heading > 2*PI) // Check for wrap due to addition of declination.
     heading -= 2*PI;
    
-  // Convert radians to degrees for readability.
-  float headingDegrees = heading * 180/M_PI; 
+  float headingDegrees = heading * 180/M_PI; // Convert radians to degrees for readability.
 
-  // Output the data via the serial port.
-  Output(raw, scaled, heading, headingDegrees);
+  Output(raw, scaled, heading, headingDegrees); // Output the data via the serial port.
 
-  // Normally we would delay the application by 66ms to allow the loop
-  // to run at 15Hz (default bandwidth for the HMC5883L).
-  // However since we have a long serial out (104ms at 9600) we will let
-  // it run at its natural speed.
-  // delay(66);
+// Data from IR sensors
+  IRleft = analogRead(A0);
+  IRright = analogRead(A2);
+  leftBumper = digitalRead(2);
+  rightBumper = digitalRead(4);  
+      
+// Driving the robot with IR sensor and compass
+  // Compass varialbe "dC"
+  if(Bearing < 180 && (Bearing+180)< headingDegrees) { dC = Bearing - headingDegrees; }
+  else if (Bearing > 180 && (Bearing - 180) > headingDegrees) { dC = Bearing - headingDegrees; }
+  else { dC = headingDegrees - Bearing; }
+  Serial.print("DC:\t");
+  Serial.print(dC);
+  
+  
+  // Wheel speed equations
+  wheelA = abs( 150 - IRleft * exp(-0.0025 * IRleft) + 0.5*dC*exp(-0.03*(IRleft+IRright)));   
+  wheelB = abs( 150 - IRright* exp(-0.0025 * IRright)- 0.5*dC*exp(-0.03*(IRleft+IRright)));
+  
+  // Driving sequence
+  if(IRleft > 250 && IRright > 250)  { backUp();  }  // Obstical infront of robot, back up and turn left
+  else if (leftBumper == 1)  {  LeftBumper(); }        // Left bumper hit an obstical, back up turn right
+  else if (rightBumper == 1) {  RightBumper(); }      // Right bumper hit an obstical, back up turn left
+  
+  else {  digitalWrite(ledG, HIGH);  // No obstical 
+          digitalWrite(ledY, LOW );
+          digitalWrite(ledR, LOW );
+    
+          digitalWrite(dir_a, HIGH);
+          digitalWrite(dir_b, HIGH);
+          analogWrite(pwm_a, wheelA);   
+          analogWrite(pwm_b, wheelB); }  
 }
 
-// Output the data down the serial port.
+//======= Sub-rutiens ========================================================
+
+// Compass Code - Output the data down the serial port.
 void Output(MagnetometerRaw raw, MagnetometerScaled scaled, float heading, float headingDegrees)
 {
    Serial.print("Raw:\t");
@@ -139,62 +154,15 @@ void Output(MagnetometerRaw raw, MagnetometerScaled scaled, float heading, float
    delay(1000);
 }
 
-void DeltaCompass()
-{  float dC;
-  if(Bearing < 180 && (Bearing+180)< headingDegrees) { dC = Bearing - headingDegrees; }
-  else if (Bearing > 180 && (Bearing - 180) > headingDegrees) { dC = Bearing - headingDegrees; }
-  else { dC = headingDegrees - Bearing; }
-  Serial.print("DC:\t");
-  Serial.print(dC);
-}
-
-void Drive()
-{  // Data from IR sensors
-  IRleft = analogRead(A0);
-  IRright = analogRead(A2);
-  leftBumper = digitalRead(2);
-  rightBumper = digitalRead(4);  
-    
-  // Wheel speed equations
-  wheelA = abs( 150 - IRleft * exp(-0.0025 * IRleft) + 0.5*dC*exp(-0.03*(IRleft+IRright)));   
-  wheelB = abs( 150 - IRright* exp(-0.0025 * IRright)- 0.5*dC*exp(-0.03*(IRleft+IRright)));
-  
-  // If there is an obstical in fron of the robot 
-  if(IRleft > 250 && IRright > 250)  { backUp();  }  // Obstical detected by IR sensors infront of Robot
-  else if (leftBumper > 0) {  LeftBumper(); }        // Left bumper is trigered
-  else if (rightBumper > 0) {  RightBumper(); }      // Right bumper is trigered
-  else {  digitalWrite(ledG, HIGH);
-          digitalWrite(ledY, LOW );
-          digitalWrite(ledR, LOW );
-  
-          digitalWrite(dir_a, HIGH);
-          digitalWrite(dir_b, HIGH);
-          analogWrite(pwm_a, wheelA);   
-          analogWrite(pwm_b, wheelB); }
-}
-
-void backUp()
+// Sub-rutiens for backing up and turning around obstacles.
+void backUp()  // Back up and turn left when IR sensors detect an object infront of the robot
 {   digitalWrite(ledG, LOW); 
     digitalWrite(ledY, LOW);
     digitalWrite(ledR, HIGH);  // Red LED on
     
-    digitalWrite(dir_a, HIGH);  // Stop
-    digitalWrite(dir_b, HIGH);
-    analogWrite(pwm_a, 0);    
-    analogWrite(pwm_b, 0);
-    delay(100);   
-    
-    digitalWrite(dir_a, LOW);  // Back up
-    digitalWrite(dir_b, LOW);
-    analogWrite(pwm_a, 100);    
-    analogWrite(pwm_b, 120);
-    delay(1000); 
-    
-    digitalWrite(dir_a, HIGH);  // Stop
-    digitalWrite(dir_b, HIGH);
-    analogWrite(pwm_a, 0);    
-    analogWrite(pwm_b, 0);
-    delay(100);   
+    Stop();
+    BackUp();
+    Stop();  
   
     digitalWrite(dir_a, HIGH);  // Turn left
     digitalWrite(dir_b, HIGH);
@@ -203,63 +171,46 @@ void backUp()
     delay(250);
 }   
    
-void LeftBumper()
+void LeftBumper()  // Baco up and turn right 
 {   digitalWrite(ledG, LOW); 
     digitalWrite(ledY, HIGH); // Yellow LED on
     digitalWrite(ledR, LOW);
     
-    digitalWrite(dir_a, HIGH);  // Stop
-    digitalWrite(dir_b, HIGH);
-    analogWrite(pwm_a, 0);    
-    analogWrite(pwm_b, 0);
-    delay(100);   
+    Stop();
+    BackUp();
+    Stop();    
     
-    digitalWrite(dir_a, LOW);  // Back up
-    digitalWrite(dir_b, LOW);
-    analogWrite(pwm_a, 100);    
-    analogWrite(pwm_b, 120);
-    delay(1000); 
-    
-    digitalWrite(dir_a, HIGH);  // Stop
-    digitalWrite(dir_b, HIGH);
-    analogWrite(pwm_a, 0);    
-    analogWrite(pwm_b, 0);
-    delay(100);   
-  
     digitalWrite(dir_a, HIGH);  // Turn right
     digitalWrite(dir_b, HIGH);
     analogWrite(pwm_a, 0);    
     analogWrite(pwm_b, 100); 
-    delay(250);
-}   
+    delay(500);              }   
     
 void RightBumper()
 {   digitalWrite(ledG, LOW); 
     digitalWrite(ledY, HIGH); // Yellow LED on
     digitalWrite(ledR, LOW);
     
-    digitalWrite(dir_a, HIGH);  // Stop
-    digitalWrite(dir_b, HIGH);
-    analogWrite(pwm_a, 0);    
-    analogWrite(pwm_b, 0);
-    delay(100);   
+    Stop();
+    BackUp();
+    Stop();
     
-    digitalWrite(dir_a, LOW);  // Back up
-    digitalWrite(dir_b, LOW);
-    analogWrite(pwm_a, 100);    
-    analogWrite(pwm_b, 120);
-    delay(1000); 
-    
-    digitalWrite(dir_a, HIGH);  // Stop
-    digitalWrite(dir_b, HIGH);
-    analogWrite(pwm_a, 0);    
-    analogWrite(pwm_b, 0);
-    delay(100);   
-  
     digitalWrite(dir_a, HIGH);  // Turn left
     digitalWrite(dir_b, HIGH);
     analogWrite(pwm_a, 100);    
     analogWrite(pwm_b, 0); 
-    delay(250);
-}       
+    delay(500);              }
+    
+void Stop() // stops the wheels
+{   analogWrite(pwm_a, 0);    
+    analogWrite(pwm_b, 0);
+    delay(100);   
+}
 
+void BackUp() // Backs up the robot
+{   digitalWrite(dir_a, LOW);  // Back up
+    digitalWrite(dir_b, LOW);
+    analogWrite(pwm_a, 100);    
+    analogWrite(pwm_b, 120);
+    delay(1000);
+}
